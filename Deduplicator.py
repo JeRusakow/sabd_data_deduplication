@@ -31,14 +31,11 @@ class Compressor:
 
                 if len(chunk) == 0:
                     break
-                if len(chunk) < self.CHUNK_SIZE:
-                    chunk = chunk.ljust(self.CHUNK_SIZE, b"\0")
-                # print(chunk)
 
                 yield chunk
 
     def create_database(self, file_db: str):
-        CREATE_TABLE_STATEMENT = """
+        CREATE_DATA_TABLE_STATEMENT = """
             CREATE TABLE IF NOT EXISTS chunk_table(
                 id INTEGER PRIMARY KEY,
                 hash TEXT,
@@ -48,20 +45,22 @@ class Compressor:
             );
         """
 
+        CREATE_METAINFO_TABLE_STATEMENT = """
+            CREATE TABLE IF NOT EXISTS metainfo(
+                byte_size INTEGER,
+                file_extension TEXT
+            );
+        """
+
         conn = sql.connect(file_db)
-        conn.execute(CREATE_TABLE_STATEMENT)
+        conn.execute(CREATE_DATA_TABLE_STATEMENT)
+        conn.execute(CREATE_METAINFO_TABLE_STATEMENT)
         conn.execute("""PRAGMA synchronous = OFF;""")
         # conn.execute("""PRAGMA journal_mode = WAL;""")
         conn.commit()
         print(f"SQL DB created at {file_db}")
 
         return conn
-
-    def save_byte_size(self, byte_size: int, conn: sql.Connection):
-        conn.execute("""CREATE TABLE IF NOT EXISTS metainfo(byte_size INTEGER);""")
-        conn.commit()
-        conn.execute("""INSERT INTO metainfo (byte_size) VALUES (?)""", (byte_size,))
-        conn.commit()
 
     def put_to_db(self, byte_chunk: str, conn: sql.Connection) -> str:
         """
@@ -90,6 +89,7 @@ class Compressor:
     def compress(self, file_to_compress) -> Tuple[str, str]:
         db_file = os.path.splitext(file_to_compress)[0] + ".db"
         compressed_file = os.path.splitext(file_to_compress)[0] + ".bin"
+        old_extension = os.path.splitext(file_to_compress)[1]
 
         conn = self.create_database(db_file)
         id_arr = []
@@ -99,7 +99,9 @@ class Compressor:
             id_arr.append(id)
 
         max_byte_len = ceil((len(bin(max(id_arr))) - 2) / 8)
-        self.save_byte_size(max_byte_len, conn)
+
+        conn.execute("""INSERT INTO metainfo (byte_size, file_extension) VALUES (?, ?)""", (max_byte_len, old_extension))
+        conn.commit()
 
         with open(compressed_file, "wb") as f:
             f.write(b"".join(i.to_bytes(length=max_byte_len, byteorder="big", signed=False) for i in id_arr))
