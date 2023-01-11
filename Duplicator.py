@@ -7,7 +7,7 @@ class Duplicator:
     def __init__(self):
         ...
 
-    def duplicate(self, file_bin: str, file_db: str):
+    def duplicate(self, file_bin: str, file_db: str) -> str:
         """
         Duplicates (restores, decompresses) the files back
 
@@ -35,7 +35,10 @@ class Duplicator:
                 chunk = self.get_bytes_from_db(int_id, conn)
                 f.write(chunk)
 
-    def get_metainfo(self, file_bin: str) -> Tuple[int, str]:
+        return file_duplicated
+
+    @staticmethod
+    def get_metainfo(file_bin: str) -> Tuple[int, str]:
         """
         Reads metainfo from BIN file
         :param file_bin: path ti BIN file
@@ -47,14 +50,16 @@ class Duplicator:
         extension = chunk[1:].decode("utf-8").strip()
         return byte_size, extension
 
-    def get_bytes_from_db(self, chunk_id: int, conn: sql.Connection) -> str:
+    @staticmethod
+    def get_bytes_from_db(chunk_id: int, conn: sql.Connection) -> str:
         data_row = conn.execute("""SELECT data FROM main.chunk_table WHERE id = ?""", (chunk_id,)).fetchone()
         if data_row is not None:
             return data_row[0]
         else:
             raise ValueError(f"ID {chunk_id} not found.")
 
-    def read_byte_file(self, file_bin, byte_size, chunk_read=0):
+    @staticmethod
+    def read_byte_file(file_bin, byte_size, chunk_read=0):
         with open(file_bin, "rb") as f:
 
             # Skipping metainfo

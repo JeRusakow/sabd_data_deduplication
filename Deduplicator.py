@@ -40,7 +40,8 @@ class Deduplicator:
                 for i in range(0, len(chunk), self.CHUNK_SIZE):
                     yield chunk[i: i + self.CHUNK_SIZE]
 
-    def create_database(self, file_db: str):
+    @staticmethod
+    def create_database(file_db: str):
         CREATE_DATA_TABLE_STATEMENT = """
             CREATE TABLE IF NOT EXISTS chunk_table(
                 id INTEGER PRIMARY KEY,
