@@ -36,18 +36,18 @@ class Duplicator:
                 f.write(chunk)
 
     def get_metainfo(self, conn: sql.Connection) -> Tuple[int, str]:
-        with conn.execute("""SELECT byte_size, file_extension FROM metainfo;""").fetchone() as metainfo:
-            if metainfo is not None:
-                return metainfo
-            else:
-                raise ValueError("Error fetching metainfo from DB")
+        metainfo = conn.execute("""SELECT byte_size, file_extension FROM metainfo;""").fetchone()
+        if metainfo is not None:
+            return metainfo
+        else:
+            raise ValueError("Error fetching metainfo from DB")
 
     def get_bytes_from_db(self, chunk_id: int, conn: sql.Connection) -> str:
-        with conn.execute("""SELECT data FROM main.chunk_table WHERE id = ?""", (chunk_id,)).fetchone() as datarow:
-            if datarow is not None:
-                return datarow[0]
-            else:
-                raise ValueError(f"ID {chunk_id} not found.")
+        data_row = conn.execute("""SELECT data FROM main.chunk_table WHERE id = ?""", (chunk_id,)).fetchone()
+        if data_row is not None:
+            return data_row[0]
+        else:
+            raise ValueError(f"ID {chunk_id} not found.")
 
     def read_byte_file(self, file_bin, byte_size, chunk_read=0):
         with open(file_bin, "rb") as f:
