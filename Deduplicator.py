@@ -5,7 +5,7 @@ from math import ceil
 
 
 class Deduplicator:
-    def __init__(self, hash_funk=lambda x: x, chunk_size=10):
+    def __init__(self, hash_funk=lambda x: x, chunk_size=10, chunk_read=0):
         """
         Compresses files.
 
@@ -15,6 +15,7 @@ class Deduplicator:
 
         self.HASH_FUNC = hash_funk
         self.CHUNK_SIZE = chunk_size
+        self.CHUNK_READ = chunk_read
 
     def split_to_chunks(self, file_to_split):
         """
@@ -25,13 +26,19 @@ class Deduplicator:
         """
 
         with open(file_to_split, "rb") as f:
-            while True:
-                chunk = f.read(self.CHUNK_SIZE)
+            if self.CHUNK_READ > 0:
+                while True:
+                    chunk = f.read(self.CHUNK_SIZE * self.CHUNK_READ)
 
-                if len(chunk) == 0:
-                    break
+                    if len(chunk) == 0:
+                        break
 
-                yield chunk
+                    for i in range(0, self.CHUNK_SIZE * self.CHUNK_READ, self.CHUNK_SIZE):
+                        yield chunk[i: i + self.CHUNK_SIZE]
+            else:
+                chunk = f.read()
+                for i in range(0, len(chunk), self.CHUNK_SIZE):
+                    yield chunk[i: i + self.CHUNK_SIZE]
 
     def create_database(self, file_db: str):
         CREATE_DATA_TABLE_STATEMENT = """
@@ -39,8 +46,7 @@ class Deduplicator:
                 id INTEGER PRIMARY KEY,
                 hash TEXT,
                 data TEXT,
-                reuse_cnt INTEGER,
-                rational_id INTEGER
+                reuse_cnt INTEGER
             );
         """
 
@@ -86,6 +92,11 @@ class Deduplicator:
             return row_id;
 
     def deduplicate(self, file_to_compress) -> Tuple[str, str]:
+        """
+        Deduplicates the file.
+        :param file_to_compress:
+        :return: Tuple of two paths: BIN and DB
+        """
         db_file = os.path.splitext(file_to_compress)[0] + ".db"
         compressed_file = os.path.splitext(file_to_compress)[0] + ".bin"
         old_extension = os.path.splitext(file_to_compress)[1]
@@ -97,7 +108,7 @@ class Deduplicator:
             id = self.put_to_db(byte_chunk, conn)
             id_arr.append(id)
 
-        max_byte_len = ceil((len(bin(max(id_arr))) - 2) / 8)
+        max_byte_len = ceil((len(bin(max(id_arr))) - 2) / 8.)
 
         conn.execute("""INSERT INTO metainfo (byte_size, file_extension) VALUES (?, ?)""", (max_byte_len, old_extension))
         conn.commit()
