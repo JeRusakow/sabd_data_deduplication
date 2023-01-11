@@ -102,6 +102,7 @@ class Compressor:
 
         conn.execute("""INSERT INTO metainfo (byte_size, file_extension) VALUES (?, ?)""", (max_byte_len, old_extension))
         conn.commit()
+        conn.close()
 
         with open(compressed_file, "wb") as f:
             f.write(b"".join(i.to_bytes(length=max_byte_len, byteorder="big", signed=False) for i in id_arr))
