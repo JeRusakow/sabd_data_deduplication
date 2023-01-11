@@ -50,16 +50,8 @@ class Deduplicator:
             );
         """
 
-        CREATE_METAINFO_TABLE_STATEMENT = """
-            CREATE TABLE IF NOT EXISTS metainfo(
-                byte_size INTEGER,
-                file_extension TEXT
-            );
-        """
-
         conn = sql.connect(file_db)
         conn.execute(CREATE_DATA_TABLE_STATEMENT)
-        conn.execute(CREATE_METAINFO_TABLE_STATEMENT)
         conn.execute("""PRAGMA synchronous = OFF;""")
         # conn.execute("""PRAGMA journal_mode = WAL;""")
         conn.commit()
@@ -91,40 +83,46 @@ class Deduplicator:
 
             return row_id;
 
-    def deduplicate(self, file_to_compress) -> Tuple[str, str]:
+    def deduplicate(self, file_to_deduplicate: str, db_file: str) -> str:
         """
         Deduplicates the file.
-        :param file_to_compress:
-        :return: Tuple of two paths: BIN and DB
+
+        :param db_file: path to database
+        :param file_to_deduplicate: path to file to deduplicate
+        :return: path to BIN file
         """
-        db_file = os.path.splitext(file_to_compress)[0] + ".db"
-        compressed_file = os.path.splitext(file_to_compress)[0] + ".bin"
-        old_extension = os.path.splitext(file_to_compress)[1]
+        file_bin = os.path.splitext(file_to_deduplicate)[0] + ".bin"
+        old_extension = os.path.splitext(file_to_deduplicate)[1]
 
         conn = self.create_database(db_file)
         id_arr = []
 
-        for byte_chunk in self.split_to_chunks(file_to_compress):
+        for byte_chunk in self.split_to_chunks(file_to_deduplicate):
             id = self.put_to_db(byte_chunk, conn)
             id_arr.append(id)
 
         max_byte_len = ceil((len(bin(max(id_arr))) - 2) / 8.)
 
-        conn.execute("""INSERT INTO metainfo (byte_size, file_extension) VALUES (?, ?)""", (max_byte_len, old_extension))
-        conn.commit()
+        # this will never happen :)
+        if max_byte_len >= 255:
+            raise ValueError(f"Hash table overfilled")
+
+        # metainfo written to BIN file
+        metainfo = max_byte_len.to_bytes(length=1, byteorder="big", signed=False) + old_extension.ljust(7).encode("utf-8")
+
         conn.close()
 
-        with open(compressed_file, "wb") as f:
+        with open(file_bin, "wb") as f:
+            f.write(metainfo)
             f.write(b"".join(i.to_bytes(length=max_byte_len, byteorder="big", signed=False) for i in id_arr))
 
-        return compressed_file, db_file
+        return file_bin
 
 
 if __name__ == "__main__":
     c = Deduplicator()
     file = "/home/jegor/PycharmProjects/sabd_data_deduplication/test_files/photo.jpg"
-    for x in c.split_to_chunks(file):
-        print(x)
+
 
 
 

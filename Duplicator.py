@@ -7,16 +7,16 @@ class Duplicator:
     def __init__(self):
         ...
 
-    def duplicate(self, file: str):
+    def duplicate(self, file_bin: str, file_db: str):
         """
         Duplicates (restores, decompresses) the files back
-        :param file: Path to either .DB or .BIN files of deduplicated object
+
+        :param file_db:
+        :param file_bin:
         :return: path to deduplicated file
         """
 
-        file_stem = os.path.splitext(file)[0]
-        file_bin = file_stem + ".bin"
-        file_db = file_stem + ".db"
+        file_stem = os.path.splitext(file_bin)[0]
 
         if not os.path.exists(file_bin):
             raise ValueError(f"Expected BIN file {file_bin} does not exists.")
@@ -25,7 +25,7 @@ class Duplicator:
 
         conn = sql.connect(file_db)
 
-        (byte_size, file_extension) = self.get_metainfo(conn)
+        (byte_size, file_extension) = self.get_metainfo(file_bin)
 
         file_duplicated = file_stem + ".restored" + file_extension
 
@@ -35,12 +35,17 @@ class Duplicator:
                 chunk = self.get_bytes_from_db(int_id, conn)
                 f.write(chunk)
 
-    def get_metainfo(self, conn: sql.Connection) -> Tuple[int, str]:
-        metainfo = conn.execute("""SELECT byte_size, file_extension FROM metainfo;""").fetchone()
-        if metainfo is not None:
-            return metainfo
-        else:
-            raise ValueError("Error fetching metainfo from DB")
+    def get_metainfo(self, file_bin: str) -> Tuple[int, str]:
+        """
+        Reads metainfo from BIN file
+        :param file_bin: path ti BIN file
+        :return: byte_size and extension of deduplicated file
+        """
+        with open(file_bin, "rb") as f:
+            chunk = f.read(8)
+        byte_size = chunk[0]
+        extension = chunk[1:].decode("utf-8").strip()
+        return byte_size, extension
 
     def get_bytes_from_db(self, chunk_id: int, conn: sql.Connection) -> str:
         data_row = conn.execute("""SELECT data FROM main.chunk_table WHERE id = ?""", (chunk_id,)).fetchone()
@@ -51,6 +56,10 @@ class Duplicator:
 
     def read_byte_file(self, file_bin, byte_size, chunk_read=0):
         with open(file_bin, "rb") as f:
+
+            # Skipping metainfo
+            f.read(8)
+
             if chunk_read <= 0:
                 byte_arr = f.read()
                 for i in range(0, len(byte_arr), byte_size):
@@ -63,8 +72,7 @@ class Duplicator:
                         break
 
                     for i in range(0, len(chunk), byte_size):
-                        a = chunk[i:i + byte_size]
-                        yield a
+                        yield chunk[i:i + byte_size]
 
 
 
