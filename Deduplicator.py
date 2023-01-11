@@ -4,7 +4,7 @@ import sqlite3 as sql
 from math import ceil
 
 
-class Compressor:
+class Deduplicator:
     def __init__(self, hash_funk=lambda x: x, chunk_size=10):
         """
         Compresses files.
@@ -25,7 +25,6 @@ class Compressor:
         """
 
         with open(file_to_split, "rb") as f:
-            print("File opened")
             while True:
                 chunk = f.read(self.CHUNK_SIZE)
 
@@ -86,7 +85,7 @@ class Compressor:
 
             return row_id;
 
-    def compress(self, file_to_compress) -> Tuple[str, str]:
+    def deduplicate(self, file_to_compress) -> Tuple[str, str]:
         db_file = os.path.splitext(file_to_compress)[0] + ".db"
         compressed_file = os.path.splitext(file_to_compress)[0] + ".bin"
         old_extension = os.path.splitext(file_to_compress)[1]
@@ -111,9 +110,10 @@ class Compressor:
 
 
 if __name__ == "__main__":
-    c = Compressor()
+    c = Deduplicator()
     file = "/home/jegor/PycharmProjects/sabd_data_deduplication/test_files/photo.jpg"
-    c.compress(file)
+    for x in c.split_to_chunks(file):
+        print(x)
 
 
 
