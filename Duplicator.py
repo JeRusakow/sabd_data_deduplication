@@ -27,7 +27,7 @@ class Duplicator:
 
         (byte_size, file_extension) = self.get_metainfo(file_bin)
 
-        file_duplicated = file_stem + ".restored" + file_extension
+        file_duplicated = file_stem + ".restored." + file_extension
 
         with open(file_duplicated, "wb") as f:
             for bin_id in self.read_byte_file(file_bin, byte_size=byte_size, chunk_read=1):
