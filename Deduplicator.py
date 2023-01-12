@@ -51,12 +51,17 @@ class Deduplicator:
             );
         """
 
+        CREATE_HASH_COLUMN_INDEX = """
+            CREATE UNIQUE INDEX hash_index
+            IF NOT EXISTS 
+            ON chunk_table (hash)"""
+
         conn = sql.connect(file_db)
         conn.execute(CREATE_DATA_TABLE_STATEMENT)
+        conn.execute(CREATE_HASH_COLUMN_INDEX)
         conn.execute("""PRAGMA synchronous = OFF;""")
         # conn.execute("""PRAGMA journal_mode = WAL;""")
         conn.commit()
-        print(f"SQL DB created at {file_db}")
 
         return conn
 
