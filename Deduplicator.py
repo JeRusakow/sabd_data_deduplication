@@ -52,9 +52,8 @@ class Deduplicator:
         """
 
         CREATE_HASH_COLUMN_INDEX = """
-            CREATE UNIQUE INDEX hash_index
-            IF NOT EXISTS 
-            ON chunk_table (hash)"""
+            CREATE UNIQUE INDEX IF NOT EXISTS hash_index
+            ON chunk_table (hash);"""
 
         conn = sql.connect(file_db)
         conn.execute(CREATE_DATA_TABLE_STATEMENT)
