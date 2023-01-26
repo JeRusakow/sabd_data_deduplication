@@ -5,12 +5,8 @@ import pandas as pd
 from argparse import ArgumentParser
 
 
-# FILE_PATH = "/home/jegor/PycharmProjects/sabd_data_deduplication/sandbox"
-# DB_PATH = "/home/jegor/PycharmProjects/sabd_data_deduplication/sandbox/base.db"
 BYTE_CHUNK_SIZES = [10, 20, 32, 64, 96, 128, 160, 192, 256, 384, 512]
 HASH_FUNCTIONS = ["none", "md5", "sha1", "sha256", "sha512"]
-LOG_PATH_CSV = "/home/jegor/PycharmProjects/sabd_data_deduplication/testing_log/log.csv"
-ITERATIONS = 10
 
 
 def dict_to_str(d: dict) -> str:
@@ -76,51 +72,43 @@ if __name__ == '__main__':
         "-i",
         "--iterations",
         help="Number of iteration for Test mode",
-        type=int
+        type=int,
+        default=2
     )
 
     args = parser.parse_args()
 
-    print(args)
-    # quit()
-
-    FILE_PATH = args.input_files
-    DB_PATH = args.db_path
+    # print(args)
 
     if args.mode == "Test":
 
         statis_table = None
-        LOG_PATH_CSV = args.log_path
-        ITERATIONS = ITERATIONS or args.iterations
 
         for chunk_size in BYTE_CHUNK_SIZES:
             for hash_func in HASH_FUNCTIONS:
                 s = Sabd(
-                    target_path=FILE_PATH,
-                    db_path=DB_PATH,
+                    target_path=args.input_files,
+                    db_path=args.db_path,
                     byte_chunk_size=chunk_size,
                     hash_func=hash_func,
                     chunk_rw=1
                 )
 
-                stats = s.run_several_times(ITERATIONS)
+                stats = s.run_several_times(args.iterations)
                 if statis_table is None:
                     statis_table = pd.Series(stats).to_frame()
                 else:
                     statis_table = pd.concat((statis_table, pd.Series(stats).to_frame()), axis=1)
 
-                statis_table.transpose().to_csv(LOG_PATH_CSV, sep=",")
+                statis_table.transpose().to_csv(args.log_path, sep=",")
 
     elif args.mode == "Deduplication":
 
-        CHUNK_SIZE = args.byte_chunk_size
-        HASH_FUNCTION = args.hash_function
-
         s = Sabd(
-            target_path=FILE_PATH,
-            db_path=DB_PATH,
-            byte_chunk_size=CHUNK_SIZE,
-            hash_func=HASH_FUNCTION,
+            target_path=args.input_files,
+            db_path=args.db_path,
+            byte_chunk_size=args.byte_chunk_size,
+            hash_func=args.hash_function,
             chunk_rw=1
         )
 
@@ -136,8 +124,8 @@ if __name__ == '__main__':
 
     elif args.mode == "Duplication":
         s = Sabd(
-            target_path=FILE_PATH,
-            db_path=DB_PATH,
+            target_path=args.input_files,
+            db_path=args.db_path,
             byte_chunk_size=10,
             hash_func="none",
             chunk_rw=1
