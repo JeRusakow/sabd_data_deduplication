@@ -144,7 +144,7 @@ class Sabd:
 
         mean_results = {
             "iterations": iter_cnt,
-            "hash_functon": self.hash_funk_name,
+            "hash_function": self.hash_funk_name,
             "byte_chunk_size": run_results[0]["byte_chunk_size"],
             "deduplication_time": mean([res["deduplication_time"] for res in run_results]),
             "duplication_time": mean([res["duplication_time"] for res in run_results]),
